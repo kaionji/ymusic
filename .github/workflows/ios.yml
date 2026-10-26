@@ -1,5 +1,6 @@
 name: Build iOS (unsigned IPA)
 
+# Запуск вручную: вкладка Actions -> "Build iOS (unsigned IPA)" -> Run workflow
 on:
   workflow_dispatch:
 

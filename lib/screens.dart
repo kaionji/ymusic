@@ -452,6 +452,7 @@ class Cover extends StatelessWidget {
           ? placeholder
           : Image.network(
               url!,
+              webHtmlElementStrategy: WebHtmlElementStrategy.prefer,
               width: size,
               height: size,
               fit: BoxFit.cover,

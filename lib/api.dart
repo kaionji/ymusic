@@ -30,7 +30,9 @@ class YaApi {
   int? _uid;
   String? login;
 
-  static const _base = 'https://api.music.yandex.net';
+  // В веб-версии сюда подставляется адрес посредника (--dart-define=API_BASE=...).
+  static const _base =
+      String.fromEnvironment('API_BASE', defaultValue: 'https://api.music.yandex.net');
   // Константа из мобильного приложения (описана в issue #566 библиотеки yandex-music-api).
   static const _signSecret = 'p93jhgh689SBReK6ghtw62';
 

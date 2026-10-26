@@ -1,31 +1,15 @@
-import 'dart:io' show Platform;
-
 import 'package:flutter/material.dart';
-import 'package:media_kit/media_kit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:window_manager/window_manager.dart';
 
 import 'api.dart';
+import 'platform_setup.dart';
 import 'player.dart';
 import 'screens.dart';
 import 'theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  MediaKit.ensureInitialized();
-
-  // Заголовок и минимальный размер окна (только на компьютере).
-  // Заголовок задается отсюда, чтобы русские буквы отображались правильно.
-  if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
-    await windowManager.ensureInitialized();
-    await windowManager.waitUntilReadyToShow(
-      const WindowOptions(title: 'Моя Музыка', minimumSize: Size(420, 640)),
-      () async {
-        await windowManager.show();
-        await windowManager.focus();
-      },
-    );
-  }
+  await setupPlatform();
 
   final prefs = await SharedPreferences.getInstance();
   runApp(App(prefs: prefs));

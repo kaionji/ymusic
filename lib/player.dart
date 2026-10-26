@@ -2,9 +2,8 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
-import 'package:media_kit/media_kit.dart' hide Track, Playlist;
-
 import 'api.dart';
+import 'audio_backend.dart';
 import 'models.dart';
 
 enum RepeatKind { off, all, one }
@@ -13,18 +12,18 @@ enum RepeatKind { off, all, one }
 class PlayerController extends ChangeNotifier {
   PlayerController(this.api) {
     _subs.addAll([
-      _player.stream.playing.listen((v) {
+      _player.playing.listen((v) {
         playing = v;
         notifyListeners();
       }),
-      _player.stream.position.listen((v) => position.value = v),
-      _player.stream.duration.listen((v) {
+      _player.position.listen((v) => position.value = v),
+      _player.duration.listen((v) {
         if (v > Duration.zero) duration.value = v;
       }),
-      _player.stream.completed.listen((done) {
+      _player.completed.listen((done) {
         if (done) _onCompleted();
       }),
-      _player.stream.error.listen((e) {
+      _player.error.listen((e) {
         error = e;
         loading = false;
         notifyListeners();
@@ -33,7 +32,7 @@ class PlayerController extends ChangeNotifier {
   }
 
   final YaApi api;
-  final Player _player = Player();
+  final AudioBackend _player = createAudioBackend();
   final List<StreamSubscription> _subs = [];
   final Random _rand = Random();
 
@@ -69,6 +68,7 @@ class PlayerController extends ChangeNotifier {
   // ---------------------------------------------------------------- запуск
 
   Future<void> playQueue(List<Track> tracks, int startIndex) async {
+    _player.prepare();
     waveMode = false;
     _waveSession = null;
     _waveBatch = null;
@@ -78,6 +78,7 @@ class PlayerController extends ChangeNotifier {
   }
 
   Future<void> startWave() async {
+    _player.prepare();
     loading = true;
     error = null;
     notifyListeners();
@@ -110,7 +111,7 @@ class PlayerController extends ChangeNotifier {
     try {
       final url = await api.streamUrl(queue[i].id);
       if (gen != _gen) return; // пока грузили ссылку, выбрали другой трек
-      await _player.open(Media(url));
+      await _player.open(url);
       if (waveMode) {
         unawaited(api.waveFeedback(_waveSession, _waveBatch, 'trackStarted',
             trackId: queue[i].id));
@@ -126,7 +127,10 @@ class PlayerController extends ChangeNotifier {
 
   // ---------------------------------------------------------------- управление
 
-  Future<void> togglePlay() => _player.playOrPause();
+  Future<void> togglePlay() {
+    _player.prepare();
+    return _player.playOrPause();
+  }
   Future<void> seek(Duration d) => _player.seek(d);
 
   Future<void> setVolume(double v) async {

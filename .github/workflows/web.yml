@@ -1,0 +1,65 @@
+name: Build web and publish to GitHub Pages
+
+# Запуск вручную: вкладка Actions -> "Build web and publish to GitHub Pages" -> Run workflow
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Create web platform files (if missing)
+        run: |
+          if [ ! -d web ]; then
+            flutter create --platforms=web --project-name ymusic_app .
+          fi
+
+      - name: Name, icons and iPhone settings
+        run: |
+          pip3 install --quiet pillow
+          python3 tools/web_setup.py web
+
+      - run: flutter pub get
+
+      - name: Build web
+        env:
+          API_BASE: ${{ vars.API_BASE }}
+        run: |
+          if [ -z "$API_BASE" ]; then
+            echo "::error::Не задан адрес посредника (переменная API_BASE в настройках репозитория)"
+            exit 1
+          fi
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          flutter build web --release \
+            --base-href "/${REPO_NAME}/" \
+            --dart-define=API_BASE="${API_BASE}"
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,7 @@
+name = "ymusic-proxy"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+
+[vars]
+# Адрес вашего сайта на GitHub Pages (только домен, без пути).
+ALLOWED_ORIGIN = "https://kaionji.github.io"
