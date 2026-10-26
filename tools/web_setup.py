@@ -93,7 +93,18 @@ extra = f"""  <meta name="viewport" content="width=device-width, initial-scale=1
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="{NAME}">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <style>html,body{{background:#000;margin:0}}</style>
+  <style>
+    html,body{{background:#000;margin:0}}
+    /* Известный баг iOS: в приложении с экрана "Домой" поля ввода иногда перестают
+       реагировать на касания, пока их не "разбудить" так. Подробности:
+       https://developer.apple.com/forums/thread/700736
+       https://developer.apple.com/forums/thread/705685 */
+    input, textarea {{
+      -webkit-user-select: text !important;
+      user-select: text !important;
+      transform: translateZ(0);
+    }}
+  </style>
 """
 if "</head>" not in html:
     sys.exit("index.html: не найден </head>")
