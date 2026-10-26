@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 
 import 'models.dart';
@@ -259,6 +260,14 @@ class YaApi {
 
   /// Ссылка, которую можно отдать плееру.
   Future<String> streamUrl(String trackId) async {
+    if (kIsWeb) {
+      // В браузере второй шаг получения ссылки (нужен не для всех треков) блокируется
+      // политикой CORS - его делает наш посредник (proxy/worker.js, маршрут
+      // /resolve-stream), которому CORS не мешает, и просто перенаправляет на готовый
+      // файл. Тег <audio> в отличие от обычного кода страницы может идти по чужому
+      // адресу без CORS.
+      return '$_base/resolve-stream/$trackId?token=${Uri.encodeQueryComponent(token)}';
+    }
     final ts = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     final mac = Hmac(sha256, utf8.encode(_signSecret));
     final sign = base64.encode(mac.convert(utf8.encode('$trackId$ts')).bytes);

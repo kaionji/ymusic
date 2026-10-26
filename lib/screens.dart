@@ -24,6 +24,26 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _busy = false;
   String? _error;
 
+  /// Берет токен из буфера обмена. Нужно для iPhone: в приложении "с экрана Домой"
+  /// поле ввода иногда не получает фокус, а кнопка работает всегда.
+  Future<void> _paste() async {
+    String text = '';
+    try {
+      final data = await Clipboard.getData(Clipboard.kTextPlain);
+      text = data?.text?.trim() ?? '';
+    } catch (_) {}
+    if (text.isEmpty) {
+      if (mounted) {
+        setState(() => _error =
+            'Не удалось прочитать буфер обмена. Скопируйте токен или адрес с access_token '
+            'и нажмите кнопку еще раз (если iPhone спросит, разрешите вставку).');
+      }
+      return;
+    }
+    _ctrl.text = text;
+    await _submit();
+  }
+
   Future<void> _submit() async {
     setState(() {
       _busy = true;
@@ -65,6 +85,16 @@ class _LoginScreenState extends State<LoginScreen> {
                 Text(_error!, style: const TextStyle(color: Colors.redAccent)),
               ],
               const SizedBox(height: 16),
+              OutlinedButton.icon(
+                onPressed: _busy ? null : _paste,
+                icon: const Icon(Icons.content_paste_rounded),
+                label: const Text('Вставить из буфера и войти'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+              ),
+              const SizedBox(height: 10),
               FilledButton(
                 onPressed: _busy ? null : _submit,
                 style: FilledButton.styleFrom(
