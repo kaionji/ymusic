@@ -1,0 +1,75 @@
+name: Build iOS (unsigned IPA)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Create iOS platform files (if missing)
+        run: flutter create --platforms=ios --project-name ymusic_app .
+
+      - name: Minimum iOS version (needed by media_kit)
+        run: |
+          sed -i '' "s/^# platform :ios.*/platform :ios, '13.0'/" ios/Podfile
+          grep -n "platform :ios" ios/Podfile || true
+
+      - name: App name and background audio
+        run: |
+          PL=ios/Runner/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName Моя Музыка" "$PL" || /usr/libexec/PlistBuddy -c "Add :CFBundleDisplayName string Моя Музыка" "$PL"
+          /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" -c "Add :UIBackgroundModes:0 string audio" "$PL" || true
+
+      - name: App icon (crescent moon)
+        continue-on-error: true
+        run: |
+          pip3 install --quiet --break-system-packages pillow || pip3 install --quiet pillow
+          python3 - <<'PY'
+          from PIL import Image, ImageDraw
+          S = 1024
+          img = Image.new("RGB", (S, S), (0, 0, 0))
+          d = ImageDraw.Draw(img)
+          cx, cy, r = int(S * 0.47), int(S * 0.53), int(S * 0.30)
+          d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=(237, 237, 237))
+          cr = int(r * 0.86)
+          ox, oy = cx + int(S * 0.13), cy - int(S * 0.08)
+          d.ellipse((ox - cr, oy - cr, ox + cr, oy + cr), fill=(0, 0, 0))
+          sr = int(S * 0.022)
+          sx, sy = int(S * 0.70), int(S * 0.30)
+          d.ellipse((sx - sr, sy - sr, sx + sr, sy + sr), fill=(140, 140, 140))
+          img.save("icon_ios_1024.png")
+          PY
+          D=ios/Runner/Assets.xcassets/AppIcon.appiconset
+          for f in "$D"/Icon-App-*.png; do
+            b=$(basename "$f" .png)
+            size=${b#Icon-App-}
+            base=${size%%x*}
+            scale=1
+            case "$size" in *@2x) scale=2;; *@3x) scale=3;; esac
+            px=$(python3 -c "print(round($base*$scale))")
+            sips -z "$px" "$px" icon_ios_1024.png --out "$f" >/dev/null
+          done
+
+      - run: flutter pub get
+
+      - name: Build (no code signing)
+        run: flutter build ios --release --no-codesign
+
+      - name: Package IPA
+        run: |
+          mkdir -p Payload
+          cp -R build/ios/iphoneos/Runner.app Payload/
+          zip -qr ymusic.ipa Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ymusic-ipa
+          path: ymusic.ipa
